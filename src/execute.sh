@@ -1,0 +1,1 @@
+sudo python execute_mn.py 40 1.png 1_result.png
