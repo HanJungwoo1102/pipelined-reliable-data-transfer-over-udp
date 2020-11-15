@@ -17,7 +17,7 @@ def writeEnd(logFile, throughput, avgRTT):
 
 
 def fileSender():
-    print 'sender program starts...' #remove this
+    print('sender program starts...') #remove this
 
     ##########################
     

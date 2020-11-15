@@ -71,11 +71,8 @@ def runMininet():
     """
 
     popens = {}
-    "If your code is python, uncomment this"
-    """
     popens[receiver] = receiver.popen('python3','receiver.py')
     popens[sender] = sender.popen('python3','sender.py',recvAddr, str(windowSize), srcFilename, dstFilename)
-    """
 
     endTime = time()+180    #after 3 minutes mininet test will be shut
 

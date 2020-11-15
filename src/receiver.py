@@ -16,7 +16,7 @@ def writeEnd(logFile, throughput):
 
 
 def fileReceiver():
-    print 'receiver program starts...' 
+    print('receiver program starts...') 
 
     #########################
     
