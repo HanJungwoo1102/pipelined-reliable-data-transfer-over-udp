@@ -1,5 +1,6 @@
 import sys
 import socket
+import time
 
 "Use this method to write Packet log"
 def writePkt(logFile, procTime, pktNum, event):
@@ -24,13 +25,37 @@ def fileSender(recvAddr, windowSize, srcFilename, dstFilename):
     
     #Write your Code here
 
+    PACKET_SIZE = 10
+    SEQUENCE_NUMBER_SIZE = 4
+    BODY_DATA_SIZE = PACKET_SIZE - SEQUENCE_NUMBER_SIZE
+
     f = open(srcFilename, 'r')
-    data = f.read()
+    fileData = f.read()
     f.close()
+
+    entireDataBytes = (srcFilename + '\n' + fileData).encode()
+    lenOfEntireDataBytes = len(entireDataBytes)
+
+    packetList = []
+
+    sequenceNumber = 0
+    while sequenceNumber * BODY_DATA_SIZE < lenOfEntireDataBytes:
+        sequenceNumberData = []
+        for i in range(0, 4):
+            a = (sequenceNumber >> 32 * (3 - i)) & 0xFF
+            sequenceNumberData.append(a)
+        sequenceNumberByteData = bytes(sequenceNumberData)
+        initialIndex = sequenceNumber * BODY_DATA_SIZE
+        bodyData = entireDataBytes[initialIndex:initialIndex + BODY_DATA_SIZE]
+        packet = sequenceNumberByteData + bodyData
+        packetList.append(packet)
+        sequenceNumber += 1
+
+    print(packetList)
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    sock.sendto(data.encode(), (recvAddr, 10080))
+    sock.sendto(packetList[0], (recvAddr, 10080))
 
     sock.close()
     ##########################

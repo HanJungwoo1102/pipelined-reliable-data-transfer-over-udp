@@ -23,16 +23,21 @@ def fileReceiver():
     
     #Write your Code here
 
+    BUFSIZE = 1024
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     sock.bind(('', 10080))
 
-    data, addr = sock.recvfrom(1024)
+    data, addr = sock.recvfrom(BUFSIZE)
 
-    print('Server receive the data : ', data.decode())
+    sequenceNumber = 0
+    for i in range(0, 4):
+        sequenceNumber += data[i] << (3 - i) * 32
+
+    print('sequence number : ', sequenceNumber)
+    print('data: ', data[4:].decode())
     print('Client Address', addr)
-
-    sock.close()
 
     #########################
 
