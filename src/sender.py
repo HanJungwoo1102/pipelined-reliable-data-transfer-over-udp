@@ -1,4 +1,5 @@
 import sys
+import socket
 
 "Use this method to write Packet log"
 def writePkt(logFile, procTime, pktNum, event):
@@ -23,6 +24,11 @@ def fileSender():
     
     #Write your Code here
 
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    sock.sendto('hello'.encode(), ("10.0.0.1", 10080))
+
+    sock.close()
     ##########################
 
 

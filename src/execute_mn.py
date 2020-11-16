@@ -65,10 +65,10 @@ def runMininet():
     
 
     "If you want to test with ping and iperf, uncomment this"
-    """
+    # """
     net.pingFull([receiver,sender])
     net.iperf([receiver,sender],seconds=10)
-    """
+    # """
 
     popens = {}
     popens[receiver] = receiver.popen('python3','receiver.py')

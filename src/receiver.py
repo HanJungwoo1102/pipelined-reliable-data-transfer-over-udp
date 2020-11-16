@@ -1,4 +1,5 @@
 import sys
+import socket
 
 "Use this method to write Packet log"
 def writePkt(logFile, procTime, pktNum, event):
@@ -21,6 +22,17 @@ def fileReceiver():
     #########################
     
     #Write your Code here
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    sock.bind(('', 10080))
+
+    data, addr = sock.recvfrom(1024)
+
+    print('Server receive the data : ', data.decode())
+    print('Client Address', addr)
+
+    sock.close()
 
     #########################
 
