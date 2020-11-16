@@ -1,1 +1,1 @@
-sudo python execute_mn.py 40 1.png 1_result.png
+sudo python execute_mn.py 40 test.txt test_result.txt

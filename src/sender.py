@@ -17,16 +17,20 @@ def writeEnd(logFile, throughput, avgRTT):
     logFile.write('Average RTT : {:.1f} ms'.format(avgRTT))
 
 
-def fileSender():
+def fileSender(recvAddr, windowSize, srcFilename, dstFilename):
     print('sender program starts...') #remove this
 
     ##########################
     
     #Write your Code here
 
+    f = open(srcFilename, 'r')
+    data = f.read()
+    f.close()
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    sock.sendto('hello'.encode(), ("10.0.0.1", 10080))
+    sock.sendto(data.encode(), (recvAddr, 10080))
 
     sock.close()
     ##########################
@@ -38,4 +42,4 @@ if __name__=='__main__':
     srcFilename = sys.argv[3]   #source file name
     dstFilename = sys.argv[4]   #result file name
 
-    fileSender()
+    fileSender(recvAddr, windowSize, srcFilename, dstFilename)
