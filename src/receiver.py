@@ -1,5 +1,6 @@
 import sys
 import socket
+import time
 
 "Use this method to write Packet log"
 def writePkt(logFile, procTime, pktNum, event):
@@ -29,18 +30,40 @@ def fileReceiver():
 
     sock.bind(('', 10080))
 
-    data, addr = sock.recvfrom(BUFSIZE)
+    packet, address = sock.recvfrom(BUFSIZE)
 
-    sequenceNumber = 0
-    for i in range(0, 4):
-        sequenceNumber += data[i] << (3 - i) * 32
+    sequenceNumber, data = parsePacket(packet)
 
     print('sequence number : ', sequenceNumber)
-    print('data: ', data[4:].decode())
-    print('Client Address', addr)
+    print('data: ', data)
+
+    packet, address = sock.recvfrom(BUFSIZE)
+
+    sequenceNumber, data = parsePacket(packet)
+
+    print('sequence number : ', sequenceNumber)
+    print('data: ', data)
+
+    packet, address = sock.recvfrom(BUFSIZE)
+
+    sequenceNumber, data = parsePacket(packet)
+
+    print('sequence number : ', sequenceNumber)
+    print('data: ', data)
 
     #########################
 
+
+def parsePacket(packet):
+    SEQUENCE_NUMBER_SIZE = 4
+
+    sequenceNumber = 0
+    for i in range(0, SEQUENCE_NUMBER_SIZE):
+        sequenceNumber += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 32
+
+    data = packet[SEQUENCE_NUMBER_SIZE:].decode()
+
+    return (sequenceNumber, data)
 
 
 if __name__=='__main__':
