@@ -2,19 +2,28 @@ import sys
 import socket
 import time
 
+SEQUENCE_NUMBER_SIZE = 4
+startTime = time.time()
+BUFSIZE = 1024
+
+logFilename = 'receiver_log.txt'
+
 "Use this method to write Packet log"
 def writePkt(logFile, procTime, pktNum, event):
-    logFile.write('{:1.3f} pkt: {} | {}'.format(procTime, pktNum, event))
+    logFile = open(logFilename, 'a')
+    logFile.write('{:1.3f} pkt: {} | {}\n'.format(procTime, pktNum, event))
+    logFile.close()
 
 "Use this method to write ACK log"
 def writeAck(logFile, procTime, ackNum, event):
-    procTime = time.time() - startTime
-    logFile.write('{:1.3f} ACK: {} | {}'.format(procTime, ackNum, event))
+    logFile = open(logFilename, 'a')
+    logFile.write('{:1.3f} ACK: {} | {}\n'.format(procTime, ackNum, event))
+    logFile.close()
 
 "Use this method to write final throughput log"
 def writeEnd(logFile, throughput):
-    logFile.write('File transfer is finished.')
-    logFile.write('Throughput : {:.2f} pkts/sec'.format(throughput))
+    logFile.write('File transfer is finished.\n')
+    logFile.write('Throughput : {:.2f} pkts/sec\n'.format(throughput))
 
 
 def fileReceiver():
@@ -24,39 +33,52 @@ def fileReceiver():
     
     #Write your Code here
 
-    BUFSIZE = 1024
-
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     sock.bind(('', 10080))
 
-    packet, address = sock.recvfrom(BUFSIZE)
+    ack = -1
 
-    sequenceNumber, data = parsePacket(packet)
+    dstFilename = 'dst.txt'
 
-    print('sequence number : ', sequenceNumber)
-    print('data: ', data)
+    logFile = open(logFilename, 'w')
+    logFile.write('')
+    logFile.close()
 
-    packet, address = sock.recvfrom(BUFSIZE)
+    while True:
+        packet, address = sock.recvfrom(BUFSIZE)
+        sequenceNumber, data = parsePacket(packet)
+        # 패킷 받음
+        procTime = time.time() - startTime
+        writePkt(logFile, procTime, sequenceNumber, 'received')
 
-    sequenceNumber, data = parsePacket(packet)
+        if sequenceNumber == ack + 1:
+            # 잘 받은 경우
+            ack = sequenceNumber
+            ackNumberData = []
+            for i in range(0, SEQUENCE_NUMBER_SIZE):
+                a = (sequenceNumber >> 32 * (SEQUENCE_NUMBER_SIZE - 1 - i)) & 0xFF
+                ackNumberData.append(a)
+            ackNumberByteData = bytes(ackNumberData)
 
-    print('sequence number : ', sequenceNumber)
-    print('data: ', data)
+            sock.sendto(ackNumberByteData, (address[0], address[1]))
+            procTime = time.time() - startTime
+            writeAck(logFile, procTime, ack, 'sent')
+            # ACK 보냄
 
-    packet, address = sock.recvfrom(BUFSIZE)
-
-    sequenceNumber, data = parsePacket(packet)
-
-    print('sequence number : ', sequenceNumber)
-    print('data: ', data)
+            if i == 0:
+                dstFilename = data
+                # 제목인 경우 저장
+            else:
+                f = open(dstFilename, 'a')
+                f.write(data)
+                f.close()
+                # 제목 아닌 경우 파일 저장
 
     #########################
 
 
 def parsePacket(packet):
-    SEQUENCE_NUMBER_SIZE = 4
-
     sequenceNumber = 0
     for i in range(0, SEQUENCE_NUMBER_SIZE):
         sequenceNumber += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 32
