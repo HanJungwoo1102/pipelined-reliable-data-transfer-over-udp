@@ -1,5 +1,5 @@
-SRC_FILENAME=1.png
-DST_FILENAME=1_result.png
+SRC_FILENAME=2.png
+DST_FILENAME=2_result.txt
 SENDER_LOG_FILENAME=sender_log.txt
 RECEIVER_LOG_FILENAME=receiver_log.txt
 

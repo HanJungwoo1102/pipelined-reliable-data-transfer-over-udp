@@ -74,7 +74,7 @@ def runMininet():
     popens[receiver] = receiver.popen('python3','receiver.py')
     popens[sender] = sender.popen('python3','sender.py',recvAddr, str(windowSize), srcFilename, dstFilename)
 
-    endTime = time()+180    #after 3 minutes mininet test will be shut
+    endTime = time()+1800    #after 3 minutes mininet test will be shut
 
 
     "If sender or receiver print something, pmonitor will let you to see it"

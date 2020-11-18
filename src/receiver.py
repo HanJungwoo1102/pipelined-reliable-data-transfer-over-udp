@@ -61,7 +61,7 @@ def fileReceiver():
 
         ackNumberData = []
         for i in range(0, SEQUENCE_NUMBER_SIZE):
-            a = (ack >> 32 * (SEQUENCE_NUMBER_SIZE - 1 - i)) & 0xFF
+            a = (ack >> 8 * (SEQUENCE_NUMBER_SIZE - 1 - i)) & 0xFF
             ackNumberData.append(a)
         ackNumberByteData = bytes(ackNumberData)
 
@@ -88,7 +88,7 @@ def fileReceiver():
 def parsePacket(packet):
     sequenceNumber = 0
     for i in range(0, SEQUENCE_NUMBER_SIZE):
-        sequenceNumber += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 32
+        sequenceNumber += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 8
 
     data = packet[SEQUENCE_NUMBER_SIZE:]
 

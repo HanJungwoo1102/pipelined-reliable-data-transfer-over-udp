@@ -19,6 +19,8 @@ logFile = None
 PORT = 10080
 windowTopIndex = 0
 lastSendedPacketIndex = -1
+rttList = []
+timeOutLimit = 0.1
 
 "Use this method to write Packet log"
 def writePkt(logFile, procTime, pktNum, event):
@@ -44,6 +46,10 @@ def fileSender():
     ##########################
     global windowTopIndex
     global packetList
+    global timerTime
+    global startTime
+    global timeOutLimit
+    global rttList
     
     #Write your Code here
     f = open(srcFilename, 'rb')
@@ -56,49 +62,49 @@ def fileSender():
 
     makePacketList(fileData)
 
-
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     t = threading.Thread(target=receive, args=(sock, ))
     t.start()
     
-    send(sock, 0, windowSize, 'sent')
-
     lenOfPacketList = len(packetList)
-    while windowTopIndex < lenOfPacketList:
-        rtt = time.time() - timerTime
-        if rtt > 1:
-            procTime = time.time() - startTime
-            writePkt(logFile, procTime, windowTopIndex, 'timeout since {:1.3f}(timeout value 1.0)'.format(rtt))
-            send(sock, windowTopIndex, windowTopIndex + 1, 'retransmitted')
-    
-    ##########################
-
-def send(sock, startIndex, endIndex, event):
-    global timerTime
-    global windowSize
-    global startTime
-    global recvAddr
-    global packetList
-    global lastSendedPacketIndex
-    lenOfPacketList = len(packetList)
-
-    maxSendedPacketIndex = -1
-    for i in range(startIndex, endIndex):
-
-        if i >= lenOfPacketList:
+    for i in range(0, windowSize):
+        if i + windowTopIndex >= lenOfPacketList:
             break
         else:
-
-            sock.sendto(packetList[i], (recvAddr, PORT))
-            # 패킷 보냄
-            timerTime = time.time()
+            sequenceNumber = i + windowTopIndex
+            sock.sendto(packetList[sequenceNumber], (recvAddr, PORT))
+            if i == 0:
+                timerTime = time.time()
             procTime = time.time() - startTime
-            writePkt(logFile, procTime, i, event)
-            maxSendedPacketIndex = i
+            writePkt(logFile, procTime, i, 'sent')
+    
+    while windowTopIndex < lenOfPacketList:
+        ta = time.time() - timerTime
+        if ta > timeOutLimit:
+            timeoutSince = time.time() - timerTime
+            procTime = time.time() - startTime
+            writePkt(logFile, procTime, windowTopIndex, 'timeout since {:1.3f}(timeout value {:1.3f})'.format(timeoutSince, timeOutLimit))
+            sock.sendto(packetList[windowTopIndex], (recvAddr, PORT))
+            procTime = time.time() - startTime
+            writePkt(logFile, procTime, windowTopIndex, 'retransmitted')
+            timerTime = time.time()
 
-    if lastSendedPacketIndex < maxSendedPacketIndex:
-        lastSendedPacketIndex = maxSendedPacketIndex
+    sum = 0
+    for i in rttList:
+        sum += i
+
+    avg = sum / len(rttList)
+
+    totalTime = time.time() - startTime
+
+    throughput = lenOfPacketList / totalTime
+    
+    writeEnd(logFile, throughput, avg)
+
+    print('success')
+
+    ##########################
 
 def receive(sock):
     global packetList
@@ -107,45 +113,68 @@ def receive(sock):
     global timerTime
     global windowTopIndex
     global lastSendedPacketIndex
+    global rttList
+    global timeOutLimit
     duplicateCount = 0
-
     lenOfPacketList = len(packetList)
 
     while windowTopIndex < lenOfPacketList:
         packet, address = sock.recvfrom(BUFSIZE)
-
         ackNumber = 0
         for i in range(0, SEQUENCE_NUMBER_SIZE):
-            ackNumber += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 32
-        
+            ackNumber += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 8
         procTime = time.time() - startTime
         writeAck(logFile, procTime, ackNumber, 'received')
         # ack 받음
+        if ackNumber >= windowTopIndex:
+            rtt = time.time() - timerTime
+            rttList.append(rtt)
 
+            sum = 0
+            for i in rttList:
+                sum += i
+
+            avg = sum / len(rttList)
+            if avg > 1:
+                timeOutLimit = avg
+            # rtt 저장, rtt avg
         if ackNumber == windowTopIndex - 1:
             duplicateCount += 1
-
             if duplicateCount >= 3:
                 procTime = time.time() - startTime
                 writeAck(logFile, procTime, ackNumber, '3 ack duplicated')
-                send(sock, windowTopIndex, windowTopIndex + 1, 'retransmitted')
+                sock.sendto(packetList[windowTopIndex], (recvAddr, PORT))
+                procTime = time.time() - startTime
+                writeAck(logFile, procTime, windowTopIndex, 'retransmitted')
+                timerTime = time.time()
                 duplicateCount = 0
+                for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
+                    sock.sendto(packetList[i], (recvAddr, PORT))
+                    procTime = time.time() - startTime
+                    writeAck(logFile, procTime, i, 'sent')
         elif ackNumber >= windowTopIndex:
+            oldWindowTopIndex = windowTopIndex
             windowTopIndex = ackNumber + 1
+            for i in range(0, windowTopIndex - oldWindowTopIndex):
+                sequenceNumber = i + oldWindowTopIndex + windowSize
+                if sequenceNumber >= lenOfPacketList:
+                    break
+                else:
+                    sock.sendto(packetList[sequenceNumber], (recvAddr, PORT))
+                    procTime = time.time() - startTime
+                    writePkt(logFile, procTime, sequenceNumber, 'sent')
+                    if i == 0:
+                        timerTime = time.time()
             duplicateCount = 0
             # 윈도우 슬라이드
 
-            send(sock, lastSendedPacketIndex + 1, windowTopIndex + windowSize, 'additional sent')
-
 def makePacketList(fileData):
     lenOfFileData = len(fileData)
-
     sequenceNumber = 0
     data = dstFilename.encode()
     packet = makePacket(sequenceNumber, data)
     packetList.append(packet)
     sequenceNumber += 1
-
     while (sequenceNumber - 1 ) * BODY_DATA_SIZE < lenOfFileData:
         initialIndex = (sequenceNumber - 1) * BODY_DATA_SIZE
         data = fileData[initialIndex:initialIndex + BODY_DATA_SIZE]
@@ -156,13 +185,12 @@ def makePacketList(fileData):
 
 def makePacket(sequenceNumber, data):
     sequenceNumberData = []
+    
     for i in range(0, SEQUENCE_NUMBER_SIZE):
-        a = (sequenceNumber >> 32 * (SEQUENCE_NUMBER_SIZE - 1 - i)) & 0xFF
+        a = (sequenceNumber >> 8 * (SEQUENCE_NUMBER_SIZE - 1 - i)) & 0xFF
         sequenceNumberData.append(a)
     sequenceNumberByteData = bytes(sequenceNumberData)
-    
     packet = sequenceNumberByteData + data
-
     return packet
 
 
