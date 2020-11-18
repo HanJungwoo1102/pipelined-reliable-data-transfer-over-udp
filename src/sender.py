@@ -89,6 +89,10 @@ def fileSender():
             procTime = time.time() - startTime
             writePkt(logFile, procTime, windowTopIndex, 'retransmitted')
             timerTime = time.time()
+            for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
+                sock.sendto(packetList[i], (recvAddr, PORT))
+                procTime = time.time() - startTime
+                writeAck(logFile, procTime, i, 'sent')
 
     sum = 0
     for i in rttList:
