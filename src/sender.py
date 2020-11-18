@@ -129,6 +129,7 @@ def receive(sock):
                 procTime = time.time() - startTime
                 writeAck(logFile, procTime, ackNumber, '3 ack duplicated')
                 send(sock, windowTopIndex, windowTopIndex + 1, 'retransmitted')
+                duplicateCount = 0
         elif ackNumber >= windowTopIndex:
             windowTopIndex = ackNumber + 1
             duplicateCount = 0
