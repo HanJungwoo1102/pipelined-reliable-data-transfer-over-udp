@@ -118,8 +118,9 @@ def receive(sock):
         for i in range(0, SEQUENCE_NUMBER_SIZE):
             ackNumber += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 32
         
-        # ack 받음
         procTime = time.time() - startTime
+        writeAck(logFile, procTime, ackNumber, 'received')
+        # ack 받음
 
         if ackNumber == windowTopIndex - 1:
             duplicateCount += 1
