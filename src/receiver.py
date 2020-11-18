@@ -52,28 +52,36 @@ def fileReceiver():
         procTime = time.time() - startTime
         writePkt(logFile, procTime, sequenceNumber, 'received')
 
-        if sequenceNumber == ack + 1:
-            # 잘 받은 경우
-            ack = sequenceNumber
+        isSave = False
+
+        if sequenceNumber == ack + 1 or sequenceNumber < ack + 1:
+            if sequenceNumber == ack + 1:
+                ack = sequenceNumber
+                isSave = True
+                # 잘 받은 경우
+
             ackNumberData = []
             for i in range(0, SEQUENCE_NUMBER_SIZE):
-                a = (sequenceNumber >> 32 * (SEQUENCE_NUMBER_SIZE - 1 - i)) & 0xFF
+                a = (ack >> 32 * (SEQUENCE_NUMBER_SIZE - 1 - i)) & 0xFF
                 ackNumberData.append(a)
             ackNumberByteData = bytes(ackNumberData)
 
-            sock.sendto(ackNumberByteData, (address[0], address[1]))
+            sock.sendto(ackNumberByteData, address)
             procTime = time.time() - startTime
             writeAck(logFile, procTime, ack, 'sent')
             # ACK 보냄
 
-            if i == 0:
-                dstFilename = data
-                # 제목인 경우 저장
-            else:
-                f = open(dstFilename, 'a')
-                f.write(data)
-                f.close()
-                # 제목 아닌 경우 파일 저장
+            if isSave:
+                # 잘 받은 경우
+                if sequenceNumber == 0:
+                    dstFilename = data
+                    # 제목인 경우 제목 저장
+                else:
+                    f = open(dstFilename, 'a')
+                    f.write(data)
+                    f.close()
+                    # 제목 아닌 경우 파일 저장
+                isSave = False
 
     #########################
 

@@ -3,7 +3,7 @@ import socket
 import time
 import threading
 
-PACKET_SIZE = 10
+PACKET_SIZE = 1000
 SEQUENCE_NUMBER_SIZE = 4
 BODY_DATA_SIZE = PACKET_SIZE - SEQUENCE_NUMBER_SIZE
 recvAddr = None
@@ -11,12 +11,14 @@ windowSize = None
 srcFilename = None
 dstFilename = None
 startTime = time.time()
-windowTopIndex = 0
 packetList = []
 timerTime = None
 BUFSIZE = 1024
 logFilename = 'sender_log.txt'
 logFile = None
+PORT = 10080
+windowTopIndex = 0
+lastSendedPacketIndex = -1
 
 "Use this method to write Packet log"
 def writePkt(logFile, procTime, pktNum, event):
@@ -40,6 +42,8 @@ def fileSender():
     print('sender program starts...') #remove this
 
     ##########################
+    global windowTopIndex
+    global packetList
     
     #Write your Code here
     f = open(srcFilename, 'r')
@@ -52,64 +56,84 @@ def fileSender():
 
     makePacketList(fileData)
 
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    send(sock)
+    t = threading.Thread(target=receive, args=(sock, ))
+    t.start()
+    
+    send(sock, 0, windowSize, 'sent')
 
-    sock.close()
+    lenOfPacketList = len(packetList)
+    while windowTopIndex < lenOfPacketList:
+        rtt = time.time() - timerTime
+        if rtt > 1:
+            procTime = time.time() - startTime
+            writePkt(logFile, procTime, windowTopIndex, 'timeout since {:1.3f}(timeout value 1.0)'.format(rtt))
+            send(sock, windowTopIndex, windowTopIndex + 1, 'retransmitted')
+    
     ##########################
 
-def send(sock):
+def send(sock, startIndex, endIndex, event):
     global timerTime
-    global windowTopIndex
     global windowSize
     global startTime
     global recvAddr
     global packetList
-
+    global lastSendedPacketIndex
     lenOfPacketList = len(packetList)
 
-    for i in range(windowTopIndex, windowTopIndex + windowSize):
-        if (i >= lenOfPacketList):
+    maxSendedPacketIndex = -1
+    for i in range(startIndex, endIndex):
+
+        if i >= lenOfPacketList:
             break
-        
-        timerTime = time.time()
-        sock.sendto(packetList[i], (recvAddr, 10080))
-        # 패킷 보냄
-        procTime = time.time() - startTime
-        writePkt(logFile, procTime, i, 'sent')
+        else:
+
+            sock.sendto(packetList[i], (recvAddr, PORT))
+            # 패킷 보냄
+            timerTime = time.time()
+            procTime = time.time() - startTime
+            writePkt(logFile, procTime, i, event)
+            maxSendedPacketIndex = i
+
+    if lastSendedPacketIndex < maxSendedPacketIndex:
+        lastSendedPacketIndex = maxSendedPacketIndex
 
 def receive(sock):
-    global windowTopIndex
     global packetList
     global BUFSIZE
     global SEQUENCE_NUMBER_SIZE
-
+    global timerTime
+    global windowTopIndex
+    global lastSendedPacketIndex
     duplicateCount = 0
 
     lenOfPacketList = len(packetList)
+
     while windowTopIndex < lenOfPacketList:
         packet, address = sock.recvfrom(BUFSIZE)
 
-        ack = 0
+        ackNumber = 0
         for i in range(0, SEQUENCE_NUMBER_SIZE):
-            ack += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 32
+            ackNumber += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 32
         
         # ack 받음
         procTime = time.time() - startTime
-        writeAck(logFile, procTime, ack, 'received')
 
-        if ack == windowTopIndex:
+        if ackNumber == windowTopIndex - 1:
             duplicateCount += 1
-        else:
-            windowTopIndex = ack
 
-        if duplicateCount >= 3:
-            procTime = time.time() - startTime()
-            procTime = time.time() - startTime
-            writeAck(logFile, procTime, ack, '3 ack duplicated')
-        else:
-            send(sock)
+            if duplicateCount >= 3:
+                procTime = time.time() - startTime
+                writeAck(logFile, procTime, ackNumber, '3 ack duplicated')
+                send(sock, windowTopIndex, windowTopIndex + 1, 'retransmitted')
+        elif ackNumber >= windowTopIndex:
+            windowTopIndex = ackNumber + 1
+            duplicateCount = 0
+            # 윈도우 슬라이드
+
+            send(sock, lastSendedPacketIndex + 1, windowTopIndex + windowSize, 'additional sent')
 
 def makePacketList(fileData):
     fileDataBytes = fileData.encode()
