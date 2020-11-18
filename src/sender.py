@@ -46,7 +46,7 @@ def fileSender():
     global packetList
     
     #Write your Code here
-    f = open(srcFilename, 'r')
+    f = open(srcFilename, 'rb')
     fileData = f.read()
     f.close()
 
@@ -137,8 +137,7 @@ def receive(sock):
             send(sock, lastSendedPacketIndex + 1, windowTopIndex + windowSize, 'additional sent')
 
 def makePacketList(fileData):
-    fileDataBytes = fileData.encode()
-    lenOfFileDataBytes = len(fileDataBytes)
+    lenOfFileData = len(fileData)
 
     sequenceNumber = 0
     data = dstFilename.encode()
@@ -146,9 +145,9 @@ def makePacketList(fileData):
     packetList.append(packet)
     sequenceNumber += 1
 
-    while (sequenceNumber - 1 ) * BODY_DATA_SIZE < lenOfFileDataBytes:
+    while (sequenceNumber - 1 ) * BODY_DATA_SIZE < lenOfFileData:
         initialIndex = (sequenceNumber - 1) * BODY_DATA_SIZE
-        data = fileDataBytes[initialIndex:initialIndex + BODY_DATA_SIZE]
+        data = fileData[initialIndex:initialIndex + BODY_DATA_SIZE]
 
         packet = makePacket(sequenceNumber, data)
         packetList.append(packet)

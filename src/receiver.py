@@ -77,7 +77,7 @@ def fileReceiver():
                     dstFilename = data
                     # 제목인 경우 제목 저장
                 else:
-                    f = open(dstFilename, 'a')
+                    f = open(dstFilename, 'ab')
                     f.write(data)
                     f.close()
                     # 제목 아닌 경우 파일 저장
@@ -91,7 +91,7 @@ def parsePacket(packet):
     for i in range(0, SEQUENCE_NUMBER_SIZE):
         sequenceNumber += packet[i] << (SEQUENCE_NUMBER_SIZE - 1 - i) * 32
 
-    data = packet[SEQUENCE_NUMBER_SIZE:].decode()
+    data = packet[SEQUENCE_NUMBER_SIZE:]
 
     return (sequenceNumber, data)
 
