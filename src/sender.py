@@ -90,6 +90,8 @@ def fileSender():
             writePkt(logFile, procTime, windowTopIndex, 'retransmitted')
             timerTime = time.time()
             for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
+                if i >= lenOfPacketList:
+                    break
                 sock.sendto(packetList[i], (recvAddr, PORT))
                 procTime = time.time() - startTime
                 writeAck(logFile, procTime, i, 'sent')
@@ -153,6 +155,8 @@ def receive(sock):
                 timerTime = time.time()
                 duplicateCount = 0
                 for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
+                    if i >= lenOfPacketList:
+                        break
                     sock.sendto(packetList[i], (recvAddr, PORT))
                     procTime = time.time() - startTime
                     writeAck(logFile, procTime, i, 'sent')
