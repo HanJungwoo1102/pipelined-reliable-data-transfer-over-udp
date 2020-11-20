@@ -83,29 +83,33 @@ def fileSender():
                 # writeAck(logFile, procTime, sequenceNumber, 'timer start-----------------{:2.6f}'.format(procTime))
     
     while windowTopIndex < lenOfPacketList:
-        ta = time.time() - timerTime
-        if ta > timeOutLimit:
-            timeoutSince = time.time() - timerTime
-            procTime = time.time() - startTime
-            writePkt(logFile, procTime, windowTopIndex, 'timeout since {:1.3f}(timeout value {:1.3f})'.format(timeoutSince, timeOutLimit))
-            sock.sendto(packetList[windowTopIndex], (recvAddr, PORT))
-            procTime = time.time() - startTime
-            writePkt(logFile, procTime, windowTopIndex, 'retransmitted')
-            timerTime = time.time()
-            # writeAck(logFile, procTime, windowTopIndex, 'timer start-----------------{:2.6f}'.format(procTime))
-            for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
-                if i >= lenOfPacketList:
-                    break
-                sock.sendto(packetList[i], (recvAddr, PORT))
+        t = timerTime
+        if t is not None:
+            timeoutSince = time.time() - t
+            if timeoutSince > timeOutLimit:
                 procTime = time.time() - startTime
-                writeAck(logFile, procTime, i, 'sent')
-
+                writePkt(logFile, procTime, windowTopIndex, 'timeout since {:1.3f}(timeout value {:1.3f})'.format(timeoutSince, timeOutLimit))
+                sock.sendto(packetList[windowTopIndex], (recvAddr, PORT))
+                procTime = time.time() - startTime
+                writePkt(logFile, procTime, windowTopIndex, 'retransmitted')
+                timerTime = time.time()
+                # writeAck(logFile, procTime, windowTopIndex, 'timer start-----------------{:2.6f}'.format(procTime))
+                for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
+                    if i >= lenOfPacketList:
+                        break
+                    sock.sendto(packetList[i], (recvAddr, PORT))
+                    procTime = time.time() - startTime
+                    writeAck(logFile, procTime, i, 'sent')
+    
     sum = 0
-    for i in rttList:
-        sum += i
-    avg = sum * 1000 / len(rttList)
+    for rtt in rttList:
+        sum += rtt
+    
+    avg = (sum * 1000) / len(rttList)
+
     totalTime = time.time() - startTime
     throughput = lenOfPacketList / totalTime
+
     writeEnd(logFile, throughput, avg)
 
     print('success')
@@ -142,8 +146,10 @@ def receive(sock):
                     sum += i
 
                 avg = sum / len(rttList)
-                if avg > 1:
+                if avg > 0.1:
                     timeOutLimit = avg
+                else:
+                    timeOutLimit = 0.1
                 timerTime = None
                 # rtt 저장, rtt avg
         if ackNumber == windowTopIndex - 1:
