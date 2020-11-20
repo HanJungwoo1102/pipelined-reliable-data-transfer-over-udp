@@ -3,7 +3,7 @@ import socket
 import time
 import threading
 
-PACKET_SIZE = 1000
+PACKET_SIZE = 1400
 SEQUENCE_NUMBER_SIZE = 4
 BODY_DATA_SIZE = PACKET_SIZE - SEQUENCE_NUMBER_SIZE
 recvAddr = None
@@ -36,9 +36,11 @@ def writeAck(logFile, procTime, ackNum, event):
 
 "Use this method to write final throughput log"
 def writeEnd(logFile, throughput, avgRTT):
+    logFile = open(logFilename, 'a')
     logFile.write('File transfer is finished.\n')
     logFile.write('Throughput : {:.2f} pkts/sec\n'.format(throughput))
     logFile.write('Average RTT : {:.1f} ms\n'.format(avgRTT))
+    logFile.close()
 
 def fileSender():
     print('sender program starts...') #remove this
@@ -66,8 +68,8 @@ def fileSender():
 
     t = threading.Thread(target=receive, args=(sock, ))
     t.start()
-    
     lenOfPacketList = len(packetList)
+    writePkt(logFile, lenOfPacketList, lenOfPacketList, 'packet count')
     for i in range(0, windowSize):
         if i + windowTopIndex >= lenOfPacketList:
             break
@@ -99,13 +101,9 @@ def fileSender():
     sum = 0
     for i in rttList:
         sum += i
-
     avg = sum / len(rttList)
-
     totalTime = time.time() - startTime
-
     throughput = lenOfPacketList / totalTime
-    
     writeEnd(logFile, throughput, avg)
 
     print('success')
