@@ -92,14 +92,14 @@ def fileSender():
                 sock.sendto(packetList[windowTopIndex], (recvAddr, PORT))
                 procTime = time.time() - startTime
                 writePkt(logFile, procTime, windowTopIndex, 'retransmitted')
-                timerTime = time.time()
-                # writeAck(logFile, procTime, windowTopIndex, 'timer start-----------------{:2.6f}'.format(procTime))
-                for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
-                    if i >= lenOfPacketList:
-                        break
-                    sock.sendto(packetList[i], (recvAddr, PORT))
-                    procTime = time.time() - startTime
-                    writeAck(logFile, procTime, i, 'sent')
+                # timerTime = time.time()
+                # # writeAck(logFile, procTime, windowTopIndex, 'timer start-----------------{:2.6f}'.format(procTime))
+                # for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
+                #     if i >= lenOfPacketList:
+                #         break
+                #     sock.sendto(packetList[i], (recvAddr, PORT))
+                #     procTime = time.time() - startTime
+                #     writeAck(logFile, procTime, i, 'sent')
     
     sum = 0
     for rtt in rttList:
