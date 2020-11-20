@@ -76,10 +76,11 @@ def fileSender():
         else:
             sequenceNumber = i + windowTopIndex
             sock.sendto(packetList[sequenceNumber], (recvAddr, PORT))
-            if i == 0:
-                timerTime = time.time()
             procTime = time.time() - startTime
             writePkt(logFile, procTime, i, 'sent')
+            if i == 0:
+                timerTime = time.time()
+                # writeAck(logFile, procTime, sequenceNumber, 'timer start-----------------{:2.6f}'.format(procTime))
     
     while windowTopIndex < lenOfPacketList:
         ta = time.time() - timerTime
@@ -91,6 +92,7 @@ def fileSender():
             procTime = time.time() - startTime
             writePkt(logFile, procTime, windowTopIndex, 'retransmitted')
             timerTime = time.time()
+            # writeAck(logFile, procTime, windowTopIndex, 'timer start-----------------{:2.6f}'.format(procTime))
             for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
                 if i >= lenOfPacketList:
                     break
@@ -101,7 +103,7 @@ def fileSender():
     sum = 0
     for i in rttList:
         sum += i
-    avg = sum / len(rttList)
+    avg = sum * 1000 / len(rttList)
     totalTime = time.time() - startTime
     throughput = lenOfPacketList / totalTime
     writeEnd(logFile, throughput, avg)
@@ -131,17 +133,19 @@ def receive(sock):
         writeAck(logFile, procTime, ackNumber, 'received')
         # ack 받음
         if ackNumber >= windowTopIndex:
-            rtt = time.time() - timerTime
-            rttList.append(rtt)
+            if timerTime is not None:
+                rtt = time.time() - timerTime
+                rttList.append(rtt)
+                # writeAck(logFile, procTime, ackNumber, 'append rtt-----------------{:2.6f}'.format(rtt))
+                sum = 0
+                for i in rttList:
+                    sum += i
 
-            sum = 0
-            for i in rttList:
-                sum += i
-
-            avg = sum / len(rttList)
-            if avg > 1:
-                timeOutLimit = avg
-            # rtt 저장, rtt avg
+                avg = sum / len(rttList)
+                if avg > 1:
+                    timeOutLimit = avg
+                timerTime = None
+                # rtt 저장, rtt avg
         if ackNumber == windowTopIndex - 1:
             duplicateCount += 1
             if duplicateCount >= 3:
@@ -151,6 +155,7 @@ def receive(sock):
                 procTime = time.time() - startTime
                 writeAck(logFile, procTime, windowTopIndex, 'retransmitted')
                 timerTime = time.time()
+                # writeAck(logFile, procTime, windowTopIndex, 'timer start-----------------{:2.6f}'.format(procTime))
                 duplicateCount = 0
                 for i in range(windowTopIndex + 1, windowTopIndex + windowSize):
                     if i >= lenOfPacketList:
@@ -169,8 +174,6 @@ def receive(sock):
                     sock.sendto(packetList[sequenceNumber], (recvAddr, PORT))
                     procTime = time.time() - startTime
                     writePkt(logFile, procTime, sequenceNumber, 'sent')
-                    if i == 0:
-                        timerTime = time.time()
             duplicateCount = 0
             # 윈도우 슬라이드
 
